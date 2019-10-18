@@ -1,45 +1,38 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+This is an example C++ library for Arduino 0004+, based on one created by
+Nicholas Zambetti for Wiring 0006+
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+Installation
+--------------------------------------------------------------------------------
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
+To install this library, just place this entire folder as a subfolder in your
+Arduino/lib/targets/libraries folder.
 
----
+When installed, this library should look like:
 
-## Edit a file
+Arduino/lib/targets/libraries/Test              (this library's folder)
+Arduino/lib/targets/libraries/Test/Test.cpp     (the library implementation file)
+Arduino/lib/targets/libraries/Test/Test.h       (the library description file)
+Arduino/lib/targets/libraries/Test/keywords.txt (the syntax coloring file)
+Arduino/lib/targets/libraries/Test/examples     (the examples in the "open" menu)
+Arduino/lib/targets/libraries/Test/readme.txt   (this file)
 
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
+Building
+--------------------------------------------------------------------------------
 
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+After this library is installed, you just have to start the Arduino application.
+You may see a few warning messages as it's built.
 
----
+To use this library in a sketch, go to the Sketch | Import Library menu and
+select Test.  This will add a corresponding line to the top of your sketch:
+#include <Test.h>
 
-## Create a file
+To stop using this library, delete that line from your sketch.
 
-Next, you’ll add a new file to this repository.
+Geeky information:
+After a successful build of this library, a new file named "Test.o" will appear
+in "Arduino/lib/targets/libraries/Test". This file is the built/compiled library
+code.
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
-
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
-
----
-
-## Clone a repository
-
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
-
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
-
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+If you choose to modify the code for this library (i.e. "Test.cpp" or "Test.h"),
+then you must first 'unbuild' this library by deleting the "Test.o" file. The
+new "Test.o" with your code will appear after the next press of "verify"
