@@ -51,9 +51,9 @@ pipeline {
                     def tagName
                     idx = env.BRANCH_NAME.lastIndexOf('/')
                     if (idx >= 0) {
-                        tagName = "hotfix_${env.BRANCH_NAME.substring(idx + 1)}"
+                        tagName = "release_${env.BRANCH_NAME.substring(idx + 1)}H"
                     } else {
-                        tagName = "hotfix_${env.BRANCH_NAME}"
+                        tagName = "release_${env.BRANCH_NAME}H"
                     }
                     tagName += "_build_${env.BUILD_NUMBER}"
                     withAWS(region: 'us-east-1', credentials: 'aws-s3-artifact-upload') {
