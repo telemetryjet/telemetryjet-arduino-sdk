@@ -17,7 +17,7 @@ pipeline {
             steps {
                 script {
                     withAWS(region: 'us-east-2', credentials: 'aws-s3-artifact-upload') {
-                        s3Upload('TelemetryJetArduinoSDK.zip', bucket: 'files.telemetryjet.com', path: '/releases/arduino_sdk/TelemetryJetArduinoSDK_latest.zip')
+                        s3Upload(file: 'TelemetryJetArduinoSDK.zip', bucket: 'files.telemetryjet.com', path: '/releases/arduino_sdk/TelemetryJetArduinoSDK_latest.zip')
                     }
                 }
             }
@@ -37,7 +37,7 @@ pipeline {
                     }
                     tagName += "_build_${env.BUILD_NUMBER}"
                     withAWS(region: 'us-east-2', credentials: 'aws-s3-artifact-upload') {
-                        s3Upload('TelemetryJetArduinoSDK.zip', bucket: 'files.telemetryjet.com', path: "/releases/arduino_sdk/TelemetryJetArduinoSDK_${tagName}.zip")
+                        s3Upload(file: 'TelemetryJetArduinoSDK.zip', bucket: 'files.telemetryjet.com', path: "/releases/arduino_sdk/TelemetryJetArduinoSDK_${tagName}.zip")
                     }
                 }
             }
@@ -57,7 +57,7 @@ pipeline {
                     }
                     tagName += "_build_${env.BUILD_NUMBER}"
                     withAWS(region: 'us-east-2', credentials: 'aws-s3-artifact-upload') {
-                        s3Upload('TelemetryJetArduinoSDK.zip', bucket: 'files.telemetryjet.com', path: "/releases/arduino_sdk/TelemetryJetArduinoSDK_${tagName}.zip")
+                        s3Upload(file: 'TelemetryJetArduinoSDK.zip', bucket: 'files.telemetryjet.com', path: "/releases/arduino_sdk/TelemetryJetArduinoSDK_${tagName}.zip")
                     }
                 }
             }
