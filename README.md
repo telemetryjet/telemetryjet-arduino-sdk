@@ -24,12 +24,7 @@ The TelemetryJet Arduino SDK is built on top of [MessagePack](https://msgpack.or
 an API for bidirectional communication, a data point cache, one-off event triggers, and more.
 
 ### Documentation
-Full documentation for the TelemetryJet Arduino SDK is provided on the Documentation Site.
-
-### Desktop Bindings
-
-We provide several bindings for the SDK that can be used by desktop software to interact with the 
-TelemetryJet CLI. Bindings are available in Python, C/C++, Java.
+Full documentation for the TelemetryJet Arduino SDK is provided on the [TelemetryJet Documentation Site](https://docs.telemetryjet.com/arduino_sdk/).
 
 ### Compatibility
 
