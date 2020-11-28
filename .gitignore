@@ -62,3 +62,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Build archives
+telemetryjet-arduino-sdk.zip
+telemetryjet-arduino-sdk/
