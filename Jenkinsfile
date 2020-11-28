@@ -9,7 +9,7 @@ pipeline {
             }
             steps {
                 sh 'echo ==== Create Release Archive ===='
-                sh 'zip -r TelemetryJetArduinoSDK.zip TelemetryJetArduinoSDK/ -x "*.DS_Store"'
+                sh './create_release_archive.sh'
             }
         }
         stage('Copy to Download Server') {
@@ -18,7 +18,8 @@ pipeline {
             }
             steps {
                 sh "echo \"${TAG_NAME}\""
-                sh "mv "
+                sh "mv \"telemetryjet-arduino-sdk.zip\" \"telemetryjet-arduino-sdk-${TAG_NAME}.zip\""
+                sh "yes | cp -rf \"telemetryjet-arduino-sdk-${TAG_NAME}.zip\" /var/telemetryjet-downloads/builds/arduino-sdk/"
             }
         }
     }
