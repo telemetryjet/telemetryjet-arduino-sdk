@@ -1,7 +1,9 @@
 #!groovy
 
 pipeline {
-    agent 'master'
+    agent {
+        label 'master'
+    }
     stages {
         stage('Create Release Archive') {
             when {
