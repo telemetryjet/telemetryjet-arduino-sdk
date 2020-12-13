@@ -38,6 +38,8 @@ class Dimension {
 
 class TelemetryJet {
 private:
+  char* messagePackBuffer;
+  size_t messagePackBufferSize;
   Stream* _stream;
   bool isInitialized = false;
   unsigned long lastSent;
@@ -47,6 +49,7 @@ private:
   unsigned long cacheSize;
   DimensionCacheValue** allocateCacheArray(uint32_t size);
   void resizeCacheArray();
+  void resizeMessagePackBuffer();
   bool checkExpired(Dimension dimension);
   void set(uint32_t id, float value);
   float get(uint32_t id);
@@ -62,10 +65,14 @@ public:
     cacheSize = 8;
     rxPacket = new uint8_t[32];
     rxIndex = 0;
+    messagePackBufferSize = 0;
  };
   void begin();
   void end();
   void update();
+  size_t getMessagePackBufferSize() {
+    return messagePackBufferSize;
+  }
   Dimension* createDimension(const char* key);
   unsigned long getNumDimensions() {
     return numDimensions;

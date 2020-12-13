@@ -1,5 +1,8 @@
 #include <TelemetryJet.h>
 
+// This example echos a value that it receives on the "in"
+// Dimension as a value on the "out" dimension.
+
 TelemetryJet telemetry(&Serial, 0);
 
 Dimension* inValue;

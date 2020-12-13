@@ -12,6 +12,9 @@ Distributed "as is" under the MIT License. See LICENSE.md for details.
 */
 
 #include "TelemetryJet.h"
+#include "MessagePack.h"
+
+const char* timestampField = "ts";
 
 void TelemetryJet::begin() {
   isInitialized = true;
@@ -46,18 +49,30 @@ void TelemetryJet::update() {
   }
 
 
-  // Once every polling interval, write all data points in the cache that have changed as individual messages
-  if (millis() - lastSent >= throttleRate) {
+  // Once every polling interval, write all data points in the cache as a MessagePack object
+  if (millis() - lastSent >= throttleRate && numDimensions > 0) {
+    mpack_writer_t writer;
+    mpack_writer_init(&writer, messagePackBuffer, messagePackBufferSize);
+
+    uint32_t mapSize = numDimensions + 1; // Item for each dimension, 1 item for timestamp
+    mpack_start_map(&writer, mapSize);
+    mpack_write_cstr(&writer, timestampField);
+    mpack_write_u32(&writer, millis());
+    
     for (uint32_t i = 0; i < numDimensions; i++) {
       if (cacheValues[i]->hasNewValue || true) {
         cacheValues[i]->hasNewValue = false;
-        _stream->print(String(cacheValues[i]->readableName) + ":" + String(cacheValues[i]->lastValue));
-        if (i < numDimensions - 1) {
-          _stream->print(",");
-        } else {
-          _stream->print("\n");
-        }
+        mpack_write_cstr(&writer, cacheValues[i]->readableName);
+        mpack_write_float(&writer, cacheValues[i]->lastValue);
       }
+    }
+
+    size_t bytesUsed = mpack_writer_buffer_used(&writer);
+    mpack_error_t error = mpack_writer_destroy(&writer);
+    if (error == mpack_ok) {
+      // Send messagepack buffer
+      _stream->write(messagePackBuffer, bytesUsed);
+      _stream->write('\n');
     }
 
     lastSent = millis();
@@ -97,6 +112,8 @@ Dimension* TelemetryJet::createDimension(const char* key) {
   cacheValues[dimensionId]->lastTimestamp = 0;
   cacheValues[dimensionId]->hasNewValue = false;
 
+  resizeMessagePackBuffer();
+
   return new Dimension(dimensionId, this);
 }
 
@@ -116,6 +133,26 @@ void TelemetryJet::resizeCacheArray() {
   free(cacheValues);
   cacheValues = newCache;
   cacheSize = newCacheSize;
+}
+
+void TelemetryJet::resizeMessagePackBuffer() {
+  if (messagePackBufferSize > 0) {
+    free(messagePackBuffer);
+  }
+
+  // Resize messagepack buffer
+  // Size should be computed based on the number of bytes we anticipate in the buffer plus some extra
+  messagePackBufferSize = 0;
+  messagePackBufferSize += 3;  // 3 bytes for map header
+  // Add to the buffer for every dimension, and the timestamp value
+  for (int i = 0; i < numDimensions + 1; i++) {
+    messagePackBufferSize += 1; // header for string
+    messagePackBufferSize += strlen(cacheValues[i]->readableName) + 1; // n bytes based on length of string
+    messagePackBufferSize += 5; // 5 bytes for a normal float/int32 and its header
+  }
+  
+  messagePackBufferSize += 8; // Add 8 bytes to end in case we calculated something wrong
+  messagePackBuffer = (char *)malloc(sizeof(char) * messagePackBufferSize);
 }
 
 extern unsigned int __heap_start;
