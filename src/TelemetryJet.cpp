@@ -54,10 +54,10 @@ void TelemetryJet::update() {
     mpack_writer_t writer;
     mpack_writer_init(&writer, messagePackBuffer, messagePackBufferSize);
 
-    uint32_t mapSize = numDimensions + 1; // Item for each dimension, 1 item for timestamp
+    uint32_t mapSize = numDimensions; // Item for each dimension
     mpack_start_map(&writer, mapSize);
-    mpack_write_cstr(&writer, timestampField);
-    mpack_write_u32(&writer, millis());
+    //mpack_write_cstr(&writer, timestampField);
+    //mpack_write_u32(&writer, millis());
     
     for (uint32_t i = 0; i < numDimensions; i++) {
       if (cacheValues[i]->hasNewValue || true) {
@@ -144,8 +144,8 @@ void TelemetryJet::resizeMessagePackBuffer() {
   // Size should be computed based on the number of bytes we anticipate in the buffer plus some extra
   messagePackBufferSize = 0;
   messagePackBufferSize += 3;  // 3 bytes for map header
-  // Add to the buffer for every dimension, and the timestamp value
-  for (int i = 0; i < numDimensions + 1; i++) {
+  // Add to the buffer for every dimension
+  for (int i = 0; i < numDimensions; i++) {
     messagePackBufferSize += 1; // header for string
     messagePackBufferSize += strlen(cacheValues[i]->readableName) + 1; // n bytes based on length of string
     messagePackBufferSize += 5; // 5 bytes for a normal float/int32 and its header
