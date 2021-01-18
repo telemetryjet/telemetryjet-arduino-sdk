@@ -5,26 +5,14 @@
 ![license-badge](https://img.shields.io/github/license/telemetryjet/telemetryjet-arduino-sdk)
 --- 
 
-The TelemetryJet Arduino SDK is a lightweight library for communicating sensor and control data to or from microcontrollers. The Arduino SDK is designed primary for ease-of-use, with a simple, flexible API for instantly getting data from your embedded device. The SDK provides a high-level abstraction for getting and setting data and events, and handles the low-level functionality of transmitting those events.
-
-The TelemetryJet CLI can natively ingest and stream data from the Arduino SDK without any setup. We also provide bindings for the SDK in several languages for use in your own software.
-
-The TelemetryJet Arduino SDK is an excellent solution if you are interacting with a single microcontroller in your project. The SDK can be used with or without TelemetryJet itself.
-
+The TelemetryJet Arduino SDK is a lightweight, flexible library for communicating with microcontrollers. The Arduino SDK is a wrapper around [MessagePack](https://msgpack.org/index.html) that allows you to send and receive data points using a high-level API.
 
 ### Features
-- Bidirectional communication; send commands and/or data points in either direction
-- Send and receive data, and cache latest data points on the Arduino SDK
-- Cache expiration times
-- Send and receive one-off events
-- Operates over software or hardware serial, independent of transport mechanism
-- 100% free and open source
+- **Bidirectional communication**: The SDK encodes and decodes data with MessagePack over a serial connection, providing a robust telemetry link that requires minimal setup. Easily send or receive data and configure transmission rate, error checking, and other serial communication settings.
 
+- **Pub/sub messaging & caching**: Filter incoming data points, so your microcontroller only stores values you’ve selected. Data you’ve subscribed to caches locally on your device.
 
-### Philosophy
-The SDK takes an opinionated approach to message parsing and provides high-level functionality.
-The TelemetryJet Arduino SDK is built on top of [MessagePack](https://msgpack.org/index.html), which provides an efficient serialization protocol for arbitrary data. On top of MessagePack, the SDK adds
-an API for bidirectional communication, a data point cache, one-off event triggers, and more.
+- **Easy integration with any software**: The SDK sends pure MessagePack structures. You can easily parse messages in any program using [MessagePack’s language bindings](https://msgpack.org/index.html), or use the TelemetryJet CLI to stream data into other data sources without code.
 
 ### Documentation
 Full documentation for the TelemetryJet Arduino SDK is provided on the [TelemetryJet Documentation Site](https://docs.telemetryjet.com/arduino_sdk/).
