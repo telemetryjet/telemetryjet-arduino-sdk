@@ -1,8 +1,10 @@
 # TelemetryJet Arduino SDK
 
 [![arduino-library-badge](https://www.ardu-badge.com/badge/TelemetryJet.svg?)](https://www.ardu-badge.com/TelemetryJet)
+![version-badge](https://img.shields.io/github/v/release/telemetryjet/telemetryjet-arduino-sdk)
 ![commit-activity-badge](https://img.shields.io/github/last-commit/telemetryjet/telemetryjet-arduino-sdk)
 ![license-badge](https://img.shields.io/github/license/telemetryjet/telemetryjet-arduino-sdk)
+
 --- 
 
 The TelemetryJet Arduino SDK is a lightweight, flexible library for communicating with microcontrollers. The Arduino SDK is a wrapper around [MessagePack](https://msgpack.org/index.html) that allows you to send and receive data points using a high-level API.
