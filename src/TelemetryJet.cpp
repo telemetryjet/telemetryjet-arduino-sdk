@@ -22,6 +22,78 @@ TelemetryJet::TelemetryJet(Stream *transport, unsigned long transmitRate)
   dimensions = (DataPoint**) malloc(sizeof(DataPoint*) * dimensionCacheLength);
 }
 
+
+/*
+ * StuffData byte stuffs "length" bytes of data
+ * at the location pointed to by "ptr", writing
+ * the output to the location pointed to by "dst".
+ *
+ * Returns the length of the encoded data.
+ * From https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
+ */
+size_t StuffData(const uint8_t *ptr, size_t length, uint8_t *dst) {
+  uint8_t *start = dst;
+  uint8_t *code_ptr = dst++;
+
+  *code_ptr = 1;
+  while (length--) {
+      if (*ptr) {
+          *dst++ = *ptr++;
+          *code_ptr += 1;
+      } else {
+          code_ptr = dst++;
+          *code_ptr = 1;
+          ptr++;
+      }
+
+      if (*code_ptr == 0xFF && length > 0) {
+          code_ptr = dst++;
+          *code_ptr = 1;
+      }
+  }
+  *dst++ = 0;
+
+  return dst - start;
+}
+
+/*
+ * UnStuffData decodes "length" bytes of data at
+ * the location pointed to by "ptr", writing the
+ * output to the location pointed to by "dst".
+ *
+ * Returns the length of the decoded data
+ * (which is guaranteed to be <= length).
+ * From https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
+ */
+size_t UnStuffData(const uint8_t *ptr, size_t length, uint8_t *dst) {
+  const uint8_t *start = dst, *end = ptr + length;
+  uint8_t code = 0xFF, copy = 0;
+  bool flag = true;
+
+  for (; ptr < end; copy--) {
+      if (copy != 0) {
+          flag = false;
+          *dst++ = *ptr++;
+      } else {
+          if (code != 0xFF) {
+              flag = true;
+              *dst++ = 0;
+          }
+          copy = code = *ptr++;
+          if (code == 0) {
+              break;
+          }
+      }
+  }
+
+  if (flag) {
+      --dst;
+  }
+
+  return dst - start;
+}
+
+
 void TelemetryJet::update() {
   if (isTextMode) {
     // Text mode
@@ -126,6 +198,110 @@ void TelemetryJet::update() {
     // Full-featured input and output
     while (transport->available() > 0) {
       uint8_t inByte = transport->read();
+    }
+    if (millis() - lastSent >= transmitRate && numDimensions > 0) {
+      mpack_writer_t writer;
+      size_t packetLength;
+      for (uint16_t i = 0; i < numDimensions; i++) {
+        if (dimensions[i]->hasValue && (dimensions[i]->hasNewValue || !isDeltaMode)) {
+          dimensions[i]->hasNewValue = false;
+          mpack_writer_init(&writer, messagePackBuffer, 32);
+
+          // Write key and type headers
+          mpack_write_u16(&writer, (uint16_t)dimensions[i]->key);
+          mpack_write_u8(&writer, (uint8_t)dimensions[i]->type);
+
+          // Write data
+          switch (dimensions[i]->type) {
+            case DataPointType::BOOLEAN: {
+              mpack_write_bool(&writer, dimensions[i]->value.v_bool);
+              break;
+            }
+            case DataPointType::UINT8: {
+              mpack_write_u8(&writer, dimensions[i]->value.v_uint8);
+              break;
+            }
+            case DataPointType::UINT16: {
+              mpack_write_u16(&writer, dimensions[i]->value.v_uint16);
+              break;
+            }
+            case DataPointType::UINT32: {
+              mpack_write_u32(&writer, dimensions[i]->value.v_uint32);
+              break;
+            }
+            case DataPointType::UINT64: {
+              mpack_write_u64(&writer, dimensions[i]->value.v_uint64);
+              break;
+            }
+            case DataPointType::INT8: {
+              mpack_write_i8(&writer, dimensions[i]->value.v_int8);
+              break;
+            }
+            case DataPointType::INT16: {
+              mpack_write_i16(&writer, dimensions[i]->value.v_int16);
+              break;
+            }
+            case DataPointType::INT32: {
+              mpack_write_i32(&writer, dimensions[i]->value.v_int32);
+              break;
+            }
+            case DataPointType::INT64: {
+              mpack_write_i64(&writer, dimensions[i]->value.v_int64);
+              break;
+            }
+            case DataPointType::FLOAT32: {
+              mpack_write_float(&writer, dimensions[i]->value.v_float32);
+              break;
+            }
+            case DataPointType::FLOAT64: {
+              mpack_write_double(&writer, dimensions[i]->value.v_float64);
+              break;
+            }
+          }
+
+          mpack_writer_destroy(&writer);
+          packetLength = mpack_writer_buffer_used(&writer);
+
+          // Use COBS (Consistent Overhead Byte Stuffing)
+          // https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
+          // to replace all 0x0 bytes in the packet.
+          // This way, we can use 0x0 as a packet frame marker. 
+          packetLength = StuffData(messagePackBuffer, packetLength, txBuffer);
+
+          // Compute checksum and add to front of the packet
+          // We never want the checksum to == 0,
+          // because that would complicate the COBS & packet frame marker logic.
+          // If the checksum is going to be 0, add a single bit so that it won't be.
+          uint8_t checksum = 0;
+          for (uint16_t bufferIdx = 0; bufferIdx < packetLength; bufferIdx++) {
+            checksum += (uint8_t)txBuffer[bufferIdx];
+          }
+          checksum = 0xFF - (checksum + 0x01);
+
+          uint8_t checksumCorrectionByte = 0x01;
+          if (checksum == 0x0) {
+            // Increment byte in the front of the packet to correct the checksum
+            // If the checksum was previously 0x0 (0), it will now be 0xFF (255).
+            checksumCorrectionByte += 1;
+            checksum = 0xFF; 
+          }
+
+          // Write checksum and checksum correction byte
+          transport->print((uint8_t)checksum);
+          transport->print(' ');
+          transport->print((uint8_t)checksumCorrectionByte);
+          transport->print(' ');
+
+          // Write buffer
+          for (uint16_t bufferIdx = 0; bufferIdx < packetLength; bufferIdx++) {
+            transport->print((uint8_t)txBuffer[bufferIdx]);
+            transport->print(' ');
+          }
+          transport->print((uint8_t)0x0);
+          transport->println();
+        }
+      }
+      lastSent = millis();
     }
   }
 }
