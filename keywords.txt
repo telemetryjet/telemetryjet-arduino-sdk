@@ -1,10 +1,45 @@
 # Syntax Coloring Map For TelemetryJet Arduino SDK
 
 # Datatypes (KEYWORD1)
-Test    KEYWORD1
+DataPointType	KEYWORD1
+DataPointValue	KEYWORD1
+DataPoint	KEYWORD1
+TelemetryJet	KEYWORD1
+Dimension	KEYWORD1
 
 # Methods and Functions (KEYWORD2)
-doSomething KEYWORD2
+setBool	KEYWORD2
+setUInt8	KEYWORD2
+setUInt32	KEYWORD2
+setUInt64	KEYWORD2
+setInt8	KEYWORD2
+setInt16	KEYWORD2
+setInt32	KEYWORD2
+setInt64	KEYWORD2
+setFloat32	KEYWORD2
+setFloat64	KEYWORD2
+getBool	KEYWORD2
+getUInt8	KEYWORD2
+getUInt16	KEYWORD2
+getUInt32	KEYWORD2
+getUInt64	KEYWORD2
+getInt8	KEYWORD2
+getInt16	KEYWORD2
+getInt32	KEYWORD2
+getInt64	KEYWORD2
+getFloat32	KEYWORD2
+getFloat64	KEYWORD2
+clearValue	KEYWORD2
+getType	KEYWORD2
+getTimeoutAge	KEYWORD2
+getCurrentAge	KEYWORD2
+setTimeoutAge	KEYWORD2
+hasNewValue	KEYWORD2
+update	KEYWORD2
+createDimension	KEYWORD2
+getNumDimensions	KEYWORD2
+setTextMode	KEYWORD2
+setDeltaMode	KEYWORD2
 
 # Instances (KEYWORD2)
 

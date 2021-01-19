@@ -16,179 +16,545 @@ Distributed "as is" under the MIT License. See LICENSE.md for details.
 
 const char* timestampField = "ts";
 
-void TelemetryJet::begin() {
-  isInitialized = true;
-}
-
-void TelemetryJet::end() {
-  isInitialized = false;
+TelemetryJet::TelemetryJet(Stream *transport, unsigned long transmitRate)
+  : transport(transport), transmitRate(transmitRate) {
+  // Initialize variable-size dimensions array
+  dimensions = (DataPoint**) malloc(sizeof(DataPoint*) * dimensionCacheLength);
 }
 
 void TelemetryJet::update() {
-  if (!isInitialized) {
-    return;
-  }
-
-  // Read in data if any is available
-  while(_stream->available() > 0){
-    byte inByte = _stream->read();
-    if(rxIndex < 32) {
-      if (inByte == '\n') {
-        rxPacket[rxIndex++] = '\0';
-        set(0, atoi((char*)rxPacket));
-        rxIndex = 0;
-      } else {
-        rxPacket[rxIndex++] = inByte;
-      }
-    } else {
-      // Ignore until we reach next newline.
-      if (inByte == '\n') {
-        rxIndex = 0;
-      }
-    }
-  }
-
-
-  // Once every polling interval, write all data points in the cache as a MessagePack object
-  if (millis() - lastSent >= throttleRate && numDimensions > 0) {
-    mpack_writer_t writer;
-    mpack_writer_init(&writer, messagePackBuffer, messagePackBufferSize);
-
-    uint32_t mapSize = numDimensions; // Item for each dimension
-    mpack_start_map(&writer, mapSize);
-    //mpack_write_cstr(&writer, timestampField);
-    //mpack_write_u32(&writer, millis());
-    
-    for (uint32_t i = 0; i < numDimensions; i++) {
-      if (cacheValues[i]->hasNewValue || true) {
-        cacheValues[i]->hasNewValue = false;
-        mpack_write_cstr(&writer, cacheValues[i]->readableName);
-        mpack_write_float(&writer, cacheValues[i]->lastValue);
-      }
+  if (isTextMode) {
+    // Text mode
+    // Don't read inputs; just log as text output to the serial stream
+    // Useful for debugging purposes
+    while (transport->available() > 0) {
+      uint8_t inByte = transport->read();
     }
 
-    size_t bytesUsed = mpack_writer_buffer_used(&writer);
-    mpack_error_t error = mpack_writer_destroy(&writer);
-    if (error == mpack_ok) {
-      // Send messagepack buffer
-      _stream->write(messagePackBuffer, bytesUsed);
-      _stream->write('\n');
+    if (millis() - lastSent >= transmitRate && numDimensions > 0) {
+      for (uint16_t i = 0; i < numDimensions; i++) {
+        if (dimensions[i]->hasValue && (dimensions[i]->hasNewValue || !isDeltaMode)) {
+          dimensions[i]->hasNewValue = false;
+          switch (dimensions[i]->type) {
+            case DataPointType::BOOLEAN: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((unsigned int)(dimensions[i]->value.v_bool));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::UINT8: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((unsigned int)(dimensions[i]->value.v_uint8));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::UINT16: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((unsigned int)(dimensions[i]->value.v_uint16));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::UINT32: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((unsigned long)(dimensions[i]->value.v_uint32));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::UINT64: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((unsigned long)(dimensions[i]->value.v_uint64));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::INT8: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((int)(dimensions[i]->value.v_int8));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::INT16: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((int)(dimensions[i]->value.v_int16));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::INT32: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((long)(dimensions[i]->value.v_int32));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::INT64: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((long)(dimensions[i]->value.v_int64));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::FLOAT32: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((double)(dimensions[i]->value.v_float32));
+              transport->write('\n');
+              break;
+            }
+            case DataPointType::FLOAT64: {
+              transport->print((unsigned int)dimensions[i]->key);
+              transport->print('=');
+              transport->print((double)(dimensions[i]->value.v_float64));
+              transport->write('\n');
+              break;
+            }
+            default: {
+              break;
+            }
+          }
+        }
+      }
+      lastSent = millis();
     }
-
-    lastSent = millis();
+  } else {
+    // Binary mode
+    // Full-featured input and output
+    while (transport->available() > 0) {
+      uint8_t inByte = transport->read();
+    }
   }
 }
 
-void Dimension::set(float value) {
-  _parent->set(_id, value);
-}
-float Dimension::get() {
-  return _parent->get(_id);
-}
-
-void TelemetryJet::set(uint32_t id, float value) {
-  cacheValues[id]->lastValue = value;
-  cacheValues[id]->lastTimestamp = millis();
-  cacheValues[id]->hasNewValue = true;
-}
-
-float TelemetryJet::get(uint32_t id) {
-  return cacheValues[id]->lastValue;
-}
-
-Dimension* TelemetryJet::createDimension(const char* key) {
-  // Resize cache array it is full
-  if (numDimensions >= cacheSize) {
-    resizeCacheArray();
+Dimension TelemetryJet::createDimension(uint16_t key, uint32_t timeoutAge = 0) {
+  // Resize dimension array if it is full
+  if (numDimensions >= dimensionCacheLength) {
+    DataPoint** newDimensionArray = (DataPoint**) malloc(sizeof(DataPoint*) * (dimensionCacheLength + 8));
+    // Copy from old cache into new cache
+    for (int i = 0; i < numDimensions; i++) {
+      newDimensionArray[i] = dimensions[i];
+    }
+    free(dimensions);
+    dimensions = newDimensionArray;
+    dimensionCacheLength = dimensionCacheLength + 8;
   }
 
-  // Create a dimension cache value and add to the cache array
-  DimensionCacheValue* newDimensionCacheValue = (DimensionCacheValue*) malloc(sizeof(DimensionCacheValue));
-  uint32_t dimensionId = (uint32_t)numDimensions;
-  numDimensions++;
-  cacheValues[dimensionId] = newDimensionCacheValue;
-  cacheValues[dimensionId]->readableName = key;
-  cacheValues[dimensionId]->lastValue = 0;
-  cacheValues[dimensionId]->lastTimestamp = 0;
-  cacheValues[dimensionId]->hasNewValue = false;
-
-  resizeMessagePackBuffer();
-
-  return new Dimension(dimensionId, this);
-}
-
-DimensionCacheValue** TelemetryJet::allocateCacheArray(uint32_t size) {
-  return (DimensionCacheValue**) malloc(sizeof(DimensionCacheValue*) * size);
-}
-
-void TelemetryJet::resizeCacheArray() {
-  unsigned long newCacheSize = cacheSize + 8;
-  DimensionCacheValue** newCache = allocateCacheArray(newCacheSize);
-
-  // Copy from old cache into new cache
-  for (int i = 0; i < numDimensions; i++) {
-    newCache[i] = cacheValues[i];
+  uint16_t dimensionId = numDimensions++;
+  // Create a data point for the new dimension and add to the cache array
+  DataPoint* newDataPoint = (DataPoint*) malloc(sizeof(DataPoint));
+  dimensions[dimensionId] = newDataPoint;
+  dimensions[dimensionId]->key = key;
+  dimensions[dimensionId]->type = DataPointType::FLOAT32;
+  dimensions[dimensionId]->value.v_float32 = 0.0;
+  dimensions[dimensionId]->hasValue = false;
+  dimensions[dimensionId]->hasNewValue = false;
+  if (timeoutAge > 0) {
+    dimensions[dimensionId]->hasTimeout = true;
+    dimensions[dimensionId]->timeoutInterval = timeoutAge;
+  } else {
+    dimensions[dimensionId]->hasTimeout = false;
+    dimensions[dimensionId]->timeoutInterval = 0;
   }
-
-  free(cacheValues);
-  cacheValues = newCache;
-  cacheSize = newCacheSize;
+  dimensions[dimensionId]->lastTimestamp = 0;
+  return Dimension(dimensionId, this);
 }
 
-void TelemetryJet::resizeMessagePackBuffer() {
-  if (messagePackBufferSize > 0) {
-    free(messagePackBuffer);
-  }
+void Dimension::setBool(bool value) {
+  _parent->dimensions[_id]->value.v_bool = value;
+  _parent->dimensions[_id]->type = DataPointType::BOOLEAN;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
 
-  // Resize messagepack buffer
-  // Size should be computed based on the number of bytes we anticipate in the buffer plus some extra
-  messagePackBufferSize = 0;
-  messagePackBufferSize += 3;  // 3 bytes for map header
-  // Add to the buffer for every dimension
-  for (int i = 0; i < numDimensions; i++) {
-    messagePackBufferSize += 1; // header for string
-    messagePackBufferSize += strlen(cacheValues[i]->readableName) + 1; // n bytes based on length of string
-    messagePackBufferSize += 5; // 5 bytes for a normal float/int32 and its header
+void Dimension::setUInt8(uint8_t value) {
+  _parent->dimensions[_id]->value.v_uint8 = value;
+  _parent->dimensions[_id]->type = DataPointType::UINT8;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setUInt16(uint16_t value) {
+  _parent->dimensions[_id]->value.v_uint16 = value;
+  _parent->dimensions[_id]->type = DataPointType::UINT16;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setUInt32(uint32_t value) {
+  
+  _parent->dimensions[_id]->value.v_uint32 = value;
+  _parent->dimensions[_id]->type = DataPointType::UINT32;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setUInt64(uint64_t value) {
+  _parent->dimensions[_id]->value.v_uint64 = value;
+  _parent->dimensions[_id]->type = DataPointType::UINT64;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setInt8(int8_t value) {
+  _parent->dimensions[_id]->value.v_int8 = value;
+  _parent->dimensions[_id]->type = DataPointType::INT8;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setInt16(int16_t value) {
+  _parent->dimensions[_id]->value.v_int16 = value;
+  _parent->dimensions[_id]->type = DataPointType::INT16;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setInt32(int32_t value) {
+  _parent->dimensions[_id]->value.v_int32 = value;
+  _parent->dimensions[_id]->type = DataPointType::INT32;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setInt64(int64_t value) {
+  _parent->dimensions[_id]->value.v_int64 = value;
+  _parent->dimensions[_id]->type = DataPointType::INT64;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setFloat32(float value) {
+  _parent->dimensions[_id]->value.v_float32 = value;
+  _parent->dimensions[_id]->type = DataPointType::FLOAT32;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+void Dimension::setFloat64(double value) {
+  _parent->dimensions[_id]->value.v_float64 = value;
+  _parent->dimensions[_id]->type = DataPointType::FLOAT64;
+  _parent->dimensions[_id]->hasValue = true;
+  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->lastTimestamp = millis();
+}
+
+
+bool Dimension::getBool(bool defaultValue = false) {
+  if (!hasValue()) {
+    return defaultValue;
   }
   
-  messagePackBufferSize += 8; // Add 8 bytes to end in case we calculated something wrong
-  messagePackBuffer = (char *)malloc(sizeof(char) * messagePackBufferSize);
-}
-
-extern unsigned int __heap_start;
-extern void *__brkval;
-
-/*
- * The free list structure as maintained by the
- * avr-libc memory allocation routines.
- */
-struct __freelist {
-  size_t sz;
-  struct __freelist *nx;
-};
-
-/* The head of the free list structure */
-extern struct __freelist *__flp;
-
-
-/* Calculates the size of the free list */
-int freeListSize() {
-  struct __freelist* current;
-  int total = 0;
-  for (current = __flp; current; current = current->nx) {
-    total += 2; /* Add two bytes for the memory block's header  */
-    total += (int) current->sz;
-  }
-  return total;
-}
-
-int TelemetryJet::getFreeMemory() {
-  int free_memory;
-  if ((int)__brkval == 0) {
-    free_memory = ((int)&free_memory) - ((int)&__heap_start);
+  if (_parent->dimensions[_id]->type == DataPointType::BOOLEAN) {
+    return _parent->dimensions[_id]->value.v_bool;
   } else {
-    free_memory = ((int)&free_memory) - ((int)__brkval);
-    free_memory += freeListSize();
+    return defaultValue;
   }
-  return free_memory;
+}
+
+uint8_t Dimension::getUInt8(uint8_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::UINT8) {
+    return _parent->dimensions[_id]->value.v_uint8;
+  } else {
+    return (uint8_t)getBool(defaultValue);
+  }
+}
+
+uint16_t Dimension::getUInt16(uint16_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::UINT16) {
+    return _parent->dimensions[_id]->value.v_uint16;
+  } else {
+    return (uint16_t)getUInt8(defaultValue);
+  }
+}
+
+uint32_t Dimension::getUInt32(uint32_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::UINT32) {
+    return _parent->dimensions[_id]->value.v_uint32;
+  } else {
+    return (uint32_t)getUInt16(defaultValue);
+  }
+}
+
+uint64_t Dimension::getUInt64(uint64_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::UINT64) {
+    return _parent->dimensions[_id]->value.v_uint64;
+  } else {
+    return (uint64_t)getUInt32(defaultValue);
+  }
+}
+
+int8_t Dimension::getInt8(int8_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::INT8) {
+    return _parent->dimensions[_id]->value.v_int8;
+  } else {
+    return defaultValue;
+  }
+}
+
+int16_t Dimension::getInt16(int16_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::INT16) {
+    return _parent->dimensions[_id]->value.v_int16;
+  } else {
+    return (int16_t)getInt8(defaultValue);
+  }
+}
+
+int32_t Dimension::getInt32(int32_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::INT32) {
+    return _parent->dimensions[_id]->value.v_int32;
+  } else {
+    return (int32_t)getInt16(defaultValue);
+  }
+}
+
+int64_t Dimension::getInt64(int64_t defaultValue = 0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+  
+  if (_parent->dimensions[_id]->type == DataPointType::INT64) {
+    return _parent->dimensions[_id]->value.v_int64;
+  } else {
+    return (int64_t)getInt32(defaultValue);
+  }
+}
+
+float Dimension::getFloat32(float defaultValue = 0.0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+
+  if (_parent->dimensions[_id]->type == DataPointType::FLOAT32) {
+    return _parent->dimensions[_id]->value.v_float32;
+  } else {
+    return defaultValue;
+  }
+}
+
+double Dimension::getFloat64(double defaultValue = 0.0) {
+  if (!hasValue()) {
+    return defaultValue;
+  }
+
+  if (_parent->dimensions[_id]->type == DataPointType::FLOAT64) {
+    return _parent->dimensions[_id]->value.v_float64;
+  } else {
+    return (double)getFloat32(defaultValue);
+  }
+}
+
+bool Dimension::hasBool(bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::BOOLEAN) {
+    return true;
+  }
+  if (!exact) {
+    return false;
+  }
+}
+
+bool  Dimension::hasUInt8  (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::UINT8) {
+    return true;
+  }
+  if (!exact) {
+    return hasBool();
+  }
+}
+
+bool Dimension::hasUInt16 (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::UINT16) {
+    return true;
+  }
+  if (!exact) {
+    return hasUInt8();
+  }
+}
+
+bool Dimension::hasUInt32 (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::UINT32) {
+    return true;
+  }
+  if (!exact) {
+    return hasUInt16();
+  }
+}
+
+bool Dimension::hasUInt64 (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::UINT64) {
+    return true;
+  }
+  if (!exact) {
+    return hasUInt32();
+  }
+}
+
+bool Dimension::hasInt8   (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::INT8) {
+    return true;
+  }
+  if (!exact) {
+    return false;
+  }
+}
+
+bool Dimension::hasInt16  (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::INT16) {
+    return true;
+  }
+  if (!exact) {
+    return hasInt8();
+  }
+}
+
+bool Dimension::hasInt32  (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::INT32) {
+    return true;
+  }
+  if (!exact) {
+    return hasInt16();
+  }
+}
+
+bool Dimension::hasInt64  (bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::INT64) {
+    return true;
+  }
+  if (!exact) {
+    return hasInt32();
+  }
+}
+
+bool Dimension::hasFloat32(bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::FLOAT32) {
+    return true;
+  }
+  if (!exact) {
+    return false;
+  }
+}
+
+bool Dimension::hasFloat64(bool exact = false) {
+  if (!hasValue()) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->type == DataPointType::FLOAT64) {
+    return true;
+  }
+  if (!exact) {
+    return hasFloat32();
+  }
+}
+
+DataPointType Dimension::getType() {
+  return _parent->dimensions[_id]->type;
+}
+
+void Dimension::clearValue() {
+  _parent->dimensions[_id]->hasValue = false;
+}
+
+// Check if a value is present, and check/update timeout at the same time
+bool Dimension::hasValue() {
+  if (!(_parent->dimensions[_id]->hasValue)) {
+    return false;
+  }
+  if (_parent->dimensions[_id]->hasTimeout && ((millis() - _parent->dimensions[_id]->lastTimestamp) > _parent->dimensions[_id]->timeoutInterval)) {
+    _parent->dimensions[_id]->hasValue = false;
+    return false;
+  }
+  return true;
+}
+
+int32_t Dimension::getTimeoutAge() {
+  return _parent->dimensions[_id]->timeoutInterval;
+}
+
+int32_t Dimension::getCurrentAge() {
+  return (millis() - _parent->dimensions[_id]->lastTimestamp);
+}
+
+void Dimension::setTimeoutAge(uint32_t timeoutAge = 0) {
+  if (timeoutAge > 0) {
+    _parent->dimensions[_id]->hasTimeout = true;
+    _parent->dimensions[_id]->timeoutInterval = timeoutAge;
+  } else {
+    _parent->dimensions[_id]->hasTimeout = false;
+    _parent->dimensions[_id]->timeoutInterval = 0;
+  }
+}
+
+bool Dimension::hasNewValue() {
+  return _parent->dimensions[_id]->hasNewValue;
 }
