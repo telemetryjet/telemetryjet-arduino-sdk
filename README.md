@@ -5,10 +5,10 @@
 ![commit-activity-badge](https://img.shields.io/github/last-commit/telemetryjet/telemetryjet-arduino-sdk)
 ![license-badge](https://img.shields.io/github/license/telemetryjet/telemetryjet-arduino-sdk)
 
-The TelemetryJet Arduino SDK is a lightweight, flexible library for communicating with microcontrollers using a high-level API. Messages are sent and received using [MessagePack](https://msgpack.org/index.html), with packet framing and error detection added around MessagePack data. The Arduino SDK is part of the TelemetryJet platform, a set of open-source tools to collect, analyze and share hardware data.
+The TelemetryJet Arduino SDK is a lightweight library for communicating with microcontrollers using a high-level API. Messages are sent and received as [MessagePack](https://msgpack.org/index.html)-encoded data, with packet framing and error detection added around the data. The Arduino SDK is part of the TelemetryJet platform, a set of open-source tools to collect, analyze and share hardware data.
 
 ### Features
-- **Simple, Bidirectional Communication**: The SDK provides a bidirectional telemetry link with an easy to use, high-level API. Define "Dimension" objects, used as a wrapper for getting/setting data points. The underlying data points are automatically received and transmitted over the serial connection.
+- **Simple, Bidirectional Communication**: The SDK provides a bidirectional telemetry link with an easy to use, high-level API. Define "Dimension" objects, used as a wrapper for getting/setting data points. The underlying data points are automatically transmitted and received over the serial connection.
 
 - **Packet Framing & Error Correction**: The SDK defines an efficient packet encoding, with packet framing, error correction, and other features for data transmission integrity  included out of the box. Easily configure transmission rate and other communication settings. 
 
@@ -24,7 +24,7 @@ Read two analog input values, and send their values at 10Hz over the serial conn
 #include <TelemetryJet.h>
 
 // Initialize an instance of the TelemetryJet SDK.
-// Configure transmission over Serial port, every 100ms.
+// Configure transmission over Serial port, with an interval of 100ms.
 TelemetryJet telemetry(&Serial, 100);
 
 // Create a dimension storing the sensor input values
@@ -54,8 +54,8 @@ Data is received with the same structure.
 
 |_size_|1 byte  |1 byte      |1-3 bytes*        |1 byte              |1-9 bytes*|1 byte             |
 |:-----|:-------|:-----------|:----------------|:-------------------|:--------|:------------------|
-|_name_|checksum|padding     |dimension ID     |value type          |value    |packet frame marker|
-|_description_|1-byte checksum of packet|Pads packet to ensure checksum is never 0x0|MessagePack-encoded unsigned 16-bit integer representing the dimension ID, identifying this data point|MessagePack-encoded unsigned 8-bit integer representing the value type|MessagePack-encoded value, as a boolean, 8-64 bit integer, or 32-64 bit float.|0x0 byte representing the end of packet|
+|_name_|checksum|padding & mode flags|dimension ID     |value type          |value    |packet frame marker|
+|_description_|1-byte checksum of packet. To validate, sum of all bytes in a packet should be 0xFF|Pads packet to ensure checksum is never 0x0. In future versions, will transmits low-priority data for remote debugging.|MessagePack-encoded unsigned 16-bit integer representing the dimension ID, identifying this data point|MessagePack-encoded unsigned 8-bit integer representing the value type|MessagePack-encoded value, as a boolean, 8-64 bit integer, or 32-64 bit float.|0x0 byte representing the end of packet|
 
 All packets are encoded using [Consistent Overhead Byte Stuffing](https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing), meaning that the only byte with a value of 0x0 received will be the end of packet marker. 
 
