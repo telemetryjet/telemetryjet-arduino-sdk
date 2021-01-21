@@ -104,92 +104,74 @@ void TelemetryJet::update() {
     }
 
     if (millis() - lastSent >= transmitRate && numDimensions > 0) {
+      bool wroteValue = false;
+      bool hasValue = !isDeltaMode;
       for (uint16_t i = 0; i < numDimensions; i++) {
-        if (dimensions[i]->hasValue && (dimensions[i]->hasNewValue || !isDeltaMode)) {
-          dimensions[i]->hasNewValue = false;
-          switch (dimensions[i]->type) {
-            case DataPointType::BOOLEAN: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((unsigned int)(dimensions[i]->value.v_bool));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::UINT8: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((unsigned int)(dimensions[i]->value.v_uint8));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::UINT16: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((unsigned int)(dimensions[i]->value.v_uint16));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::UINT32: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((unsigned long)(dimensions[i]->value.v_uint32));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::UINT64: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((unsigned long)(dimensions[i]->value.v_uint64));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::INT8: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((int)(dimensions[i]->value.v_int8));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::INT16: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((int)(dimensions[i]->value.v_int16));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::INT32: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((long)(dimensions[i]->value.v_int32));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::INT64: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((long)(dimensions[i]->value.v_int64));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::FLOAT32: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((double)(dimensions[i]->value.v_float32));
-              transport->write('\n');
-              break;
-            }
-            case DataPointType::FLOAT64: {
-              transport->print((unsigned int)dimensions[i]->key);
-              transport->print('=');
-              transport->print((double)(dimensions[i]->value.v_float64));
-              transport->write('\n');
-              break;
-            }
-            default: {
-              break;
-            }
-          }
+        if (dimensions[i]->hasNewValue) {
+          hasValue = true;
         }
+      }
+      if (hasValue) {
+        for (uint16_t i = 0; i < numDimensions; i++) {
+          if (dimensions[i]->hasNewValue) {
+            dimensions[i]->hasNewValue = false;
+          }
+          if (dimensions[i]->hasValue) {
+            switch (dimensions[i]->type) {
+              case DataPointType::BOOLEAN: {
+                transport->print((unsigned int)(dimensions[i]->value.v_bool));
+                break;
+              }
+              case DataPointType::UINT8: {
+                transport->print((unsigned int)(dimensions[i]->value.v_uint8));
+                break;
+              }
+              case DataPointType::UINT16: {
+                transport->print((unsigned int)(dimensions[i]->value.v_uint16));
+                break;
+              }
+              case DataPointType::UINT32: {
+                transport->print((unsigned long)(dimensions[i]->value.v_uint32));
+                break;
+              }
+              case DataPointType::UINT64: {
+                transport->print((unsigned long)(dimensions[i]->value.v_uint64));
+                break;
+              }
+              case DataPointType::INT8: {
+                transport->print((int)(dimensions[i]->value.v_int8));
+                break;
+              }
+              case DataPointType::INT16: {
+                transport->print((int)(dimensions[i]->value.v_int16));
+                break;
+              }
+              case DataPointType::INT32: {
+                transport->print((long)(dimensions[i]->value.v_int32));
+                break;
+              }
+              case DataPointType::INT64: {
+                transport->print((long)(dimensions[i]->value.v_int64));
+                break;
+              }
+              case DataPointType::FLOAT32: {
+                transport->print((double)(dimensions[i]->value.v_float32));
+                break;
+              }
+              case DataPointType::FLOAT64: {
+                transport->print((double)(dimensions[i]->value.v_float64));
+                break;
+              }
+              default: {
+                break;
+              }
+            }
+          } else {
+            transport->write('0');
+          }
+          transport->write(' ');
+        }
+        transport->write('\n');
       }
       lastSent = millis();
     }
@@ -198,6 +180,52 @@ void TelemetryJet::update() {
     // Full-featured input and output
     while (transport->available() > 0) {
       uint8_t inByte = transport->read();
+      /*
+      if (rxIndex >= 32) {
+        rxIndex = 0;
+      }
+      rxBuffer[rxIndex++] = inByte;
+
+      // 0x0 pads the end of a packet
+      if (inByte == 0x0) {
+        if (rxIndex > 5) {
+          // If we see 0x0 and have contents in the buffer, read packet
+          // Minimum length of a packet is 5 bytes:
+          // - Checksum (1 byte)
+          // - Checksum correction byte (1 byte)
+          // - Key (1+ byte)
+          // - Type (1+ byte)
+          // - Value (1+ byte)
+          // - Packet boundary (0x0, 1 byte)
+          
+          // 1 - Validate checksum
+          uint8_t checksum = 0;
+          for (uint16_t bufferIdx = 0; bufferIdx < rxIndex; bufferIdx++) {
+            checksum += (uint8_t)rxBuffer[bufferIdx];
+          }
+          if (checksum == 0xFF) {
+            // Expand COBS encoded binary string
+            size_t packetLength = UnStuffData(rxBuffer, rxIndex, tempBuffer);
+
+            // Process messagepack structure
+            mpack_reader_t reader;
+            mpack_reader_init_data(&reader, tempBuffer, packetLength);
+            mpack_tag_t key = mpack_read_tag(&reader);
+            mpack_tag_t type = mpack_read_tag(&reader);
+            mpack_tag_t value = mpack_read_tag(&reader);
+
+            mpack_read_u8
+
+            if (mpack_reader_destroy(&reader) == mpack_ok) {
+              // Write packet
+            }
+          } else {
+            numDroppedRxPackets++;
+          }
+        }
+        rxIndex = 0;
+      }
+      */
     }
     if (millis() - lastSent >= transmitRate && numDimensions > 0) {
       mpack_writer_t writer;
@@ -205,7 +233,7 @@ void TelemetryJet::update() {
       for (uint16_t i = 0; i < numDimensions; i++) {
         if (dimensions[i]->hasValue && (dimensions[i]->hasNewValue || !isDeltaMode)) {
           dimensions[i]->hasNewValue = false;
-          mpack_writer_init(&writer, messagePackBuffer, 32);
+          mpack_writer_init(&writer, tempBuffer, 32);
 
           // Write key and type headers
           mpack_write_u16(&writer, (uint16_t)dimensions[i]->key);
@@ -266,7 +294,7 @@ void TelemetryJet::update() {
           // https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
           // to replace all 0x0 bytes in the packet.
           // This way, we can use 0x0 as a packet frame marker. 
-          packetLength = StuffData(messagePackBuffer, packetLength, txBuffer);
+          packetLength = StuffData(tempBuffer, packetLength, txBuffer);
 
           // Compute checksum and add to front of the packet
           // We never want the checksum to == 0,
@@ -287,18 +315,14 @@ void TelemetryJet::update() {
           }
 
           // Write checksum and checksum correction byte
-          transport->print((uint8_t)checksum);
-          transport->print(' ');
-          transport->print((uint8_t)checksumCorrectionByte);
-          transport->print(' ');
+          transport->write((uint8_t)checksum);
+          transport->write((uint8_t)checksumCorrectionByte);
 
           // Write buffer
           for (uint16_t bufferIdx = 0; bufferIdx < packetLength; bufferIdx++) {
-            transport->print((uint8_t)txBuffer[bufferIdx]);
-            transport->print(' ');
+            transport->write((uint8_t)txBuffer[bufferIdx]);
           }
-          transport->print((uint8_t)0x0);
-          transport->println();
+          numTxPackets++;
         }
       }
       lastSent = millis();

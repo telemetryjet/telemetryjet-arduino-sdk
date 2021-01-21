@@ -12,13 +12,6 @@ data from your hardware. Code not required.
 Distributed "as is" under the MIT License. See LICENSE.md for details.
 */
 
-// EXAMPLE 1: Basic Output
-// This example configures the SDK and sends randomly generated data points.
-// You'll learn how to:
-// 1) Initialize the SDK
-// 2) Create data dimensions
-// 3) Write values
-
 #include <TelemetryJet.h>
 
 // Initialize an instance of the TelemetryJet SDK.
@@ -50,9 +43,9 @@ void loop() {
   // time to process serial data as it is received.
   telemetry.update();
   
-  // Update the dimension with an oscillating signal.
+  // Update the dimensions with an oscillating signal.
   // Note that although this loop is running as fast as possible,
   // TelemetryJet will only send data at the interval specified earlier.
-  testValue1.setInt32(sin(millis() / 1000.0) * 100.0);
+  testValue1.setFloat32(sin(millis() / 1000.0) * 100.0);
   testValue2.setFloat32(sin(millis() / 2000.0) * 200.0);
 }

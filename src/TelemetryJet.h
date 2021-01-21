@@ -181,12 +181,15 @@ private:
   uint16_t numDimensions = 0;
   uint16_t dimensionCacheLength = 8;
 
-  // Allocate fixed input, output, and encoding/decoding buffers
-  char messagePackBuffer[32];
+  // Allocate fixed input, output, and temporary buffers
+  char tempBuffer[32];
   char rxBuffer[32];
   char txBuffer[32];
   uint8_t rxIndex;
   uint8_t txIndex;
+  uint32_t numDroppedRxPackets;
+  uint32_t numRxPackets;
+  uint32_t numTxPackets;
 public:
   TelemetryJet(Stream *transport, unsigned long transmitRate);
 
