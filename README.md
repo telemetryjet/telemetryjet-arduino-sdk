@@ -5,14 +5,64 @@
 ![commit-activity-badge](https://img.shields.io/github/last-commit/telemetryjet/telemetryjet-arduino-sdk)
 ![license-badge](https://img.shields.io/github/license/telemetryjet/telemetryjet-arduino-sdk)
 
-The TelemetryJet Arduino SDK is a lightweight, flexible library for communicating with microcontrollers. The Arduino SDK is a wrapper around [MessagePack](https://msgpack.org/index.html) that allows you to send and receive data points using a high-level API.
+The TelemetryJet Arduino SDK is a lightweight, flexible library for communicating with microcontrollers using a high-level API. Messages are sent and received using [MessagePack](https://msgpack.org/index.html), with packet framing and error detection added around MessagePack data. The Arduino SDK is part of the TelemetryJet platform, a set of open-source tools to collect, analyze and share hardware data.
 
 ### Features
-- **Bidirectional communication**: The SDK encodes and decodes data with MessagePack over a serial connection, providing a robust telemetry link that requires minimal setup. Easily send or receive data and configure transmission rate, error checking, and other serial communication settings.
+- **Simple, Bidirectional Communication**: The SDK provides a bidirectional telemetry link with an easy to use, high-level API. Define "Dimension" objects, used as a wrapper for getting/setting data points. The underlying data points are automatically received and transmitted over the serial connection.
 
-- **Pub/sub messaging & caching**: Filter incoming data points, so your microcontroller only stores values you’ve selected. Data you’ve subscribed to caches locally on your device.
+- **Packet Framing & Error Correction**: The SDK defines an efficient packet encoding, with packet framing, error correction, and other features for data transmission integrity  included out of the box. Easily configure transmission rate and other communication settings. 
 
-- **Easy integration with any software**: The SDK sends pure MessagePack structures. You can easily parse messages in any program using [MessagePack’s language bindings](https://msgpack.org/index.html), or use the TelemetryJet CLI to stream data into other data sources without code.
+- **Data Caching and Expiration**: Filter incoming data points, so your microcontroller only stores values you’ve selected. Data you’ve subscribed to caches locally on your device. Configure data points to expire after a time period, providing automatic fallback for control signals when using an unreliable connection such as radio.
+
+- **Strong typing**: Type information is transmitted with data points. Transmit integer or floating-point numerical data points while preserving resolution. Only store and transmit exactly the amount of data required by your value type.
+
+- **Easy integration with any software**: The SDK sends MessagePack structures, framed with a checksum and packet delimiter. You can easily parse messages in any program using [MessagePack’s language bindings](https://msgpack.org/index.html), or use the [TelemetryJet CLI](https://github.com/telemetryjet/telemetryjet-cli) to stream data into other data sources without code.
+
+### Example
+Read two analog input values, and send their values at 10Hz over the serial connection.
+```c++
+#include <TelemetryJet.h>
+
+// Initialize an instance of the TelemetryJet SDK.
+// Configure transmission over Serial port, every 100ms.
+TelemetryJet telemetry(&Serial, 100);
+
+// Create a dimension storing the sensor input values
+Dimension sensorValue1 = telemetry.createDimension(1);
+Dimension sensorValue2 = telemetry.createDimension(2);
+
+void setup() {
+  // Initialize the serial stream.
+  Serial.begin(115200);
+  while (!Serial);
+}
+
+void loop() {
+  // Process new data if available, and periodically send data points every 100ms.
+  telemetry.update();
+  
+  // Update the dimensions with the analog input values.
+  // Store as a 16-bit unsigned integer.
+  sensorValue1.setUInt16(analogRead(A0));
+  sensorValue2.setUInt16(analogRead(A1));
+}
+```
+
+### Packet Specification
+At the user-specified transmit interval, the SDK will send a packet for each data point that has an updated value since the last transmission. 
+Data is received with the same structure.
+
+|_size_|1 byte  |1 byte      |1-3 bytes*        |1 byte              |1-9 bytes*|1 byte             |
+|:-----|:-------|:-----------|:----------------|:-------------------|:--------|:------------------|
+|_name_|checksum|padding     |dimension ID     |value type          |value    |packet frame marker|
+|_description_|1-byte checksum of packet|Pads packet to ensure checksum is never 0x0|MessagePack-encoded unsigned 16-bit integer representing the dimension ID, identifying this data point|MessagePack-encoded unsigned 8-bit integer representing the value type|MessagePack-encoded value, as a boolean, 8-64 bit integer, or 32-64 bit float.|0x0 byte representing the end of packet|
+
+All packets are encoded using [Consistent Overhead Byte Stuffing](https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing), meaning that the only byte with a value of 0x0 received will be the end of packet marker. 
+
+[\*] Byte sizes for MessagePack-encoded data are defined in the MessagePack specification: https://github.com/msgpack/msgpack/blob/master/spec.md#type-system. In MessagePack, values are encoded using the minimal possible space. Low-value unsigned integers, for example, will be stored in a single byte. With this encoding, the minimum size of a packet is 6 bytes.
+
+### Whitepaper
+For an overview of the motivation and design behind the TelemetryJet Arduino SDK, read our Whitepaper: "A Lightweight Telemetry Protocol for Hardware Sensor Data". (*Coming Soon!*). 
 
 ### Documentation
 Full documentation for the TelemetryJet Arduino SDK is provided on the [TelemetryJet Documentation Site](https://docs.telemetryjet.com/arduino_sdk/).
