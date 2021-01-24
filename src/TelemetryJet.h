@@ -167,6 +167,7 @@ private:
   bool isInitialized = false;
   bool isTextMode = false;
   bool isDeltaMode = true;
+  bool hasBinaryWarningMessage = true;
   uint32_t lastSent;
   uint32_t transmitRate;
 
@@ -207,6 +208,9 @@ public:
   }
   void setDeltaMode(bool deltaMode = false) {
     isDeltaMode = deltaMode;
+  }
+  void setBinaryWarningMessage(bool message = false) {
+    hasBinaryWarningMessage = message;
   }
 
   friend class Dimension;

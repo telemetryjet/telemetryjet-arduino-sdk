@@ -93,6 +93,14 @@ size_t UnStuffData(const uint8_t *ptr, size_t length, uint8_t *dst) {
 }
 
 void TelemetryJet::update() {
+  if (!isInitialized) {
+    if (hasBinaryWarningMessage && !isTextMode) {
+      transport->println(F("Started streaming data in Binary mode. This data is not human-readable."));
+      transport->println(F("For usage information, please see https://docs.telemetryjet.com/."));
+    }
+    isInitialized = true; 
+  }
+
   if (isTextMode) {
     // Text mode
     // Don't read inputs; just log as text output to the serial stream
@@ -152,7 +160,7 @@ void TelemetryJet::update() {
                 break;
               }
               case DataPointType::FLOAT32: {
-                transport->print((double)(dimensions[i]->value.v_float32));
+                transport->print((float)(dimensions[i]->value.v_float32));
                 break;
               }
               default: {
