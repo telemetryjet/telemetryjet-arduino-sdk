@@ -155,10 +155,6 @@ void TelemetryJet::update() {
                 transport->print((double)(dimensions[i]->value.v_float32));
                 break;
               }
-              case DataPointType::FLOAT64: {
-                transport->print((double)(dimensions[i]->value.v_float64));
-                break;
-              }
               default: {
                 break;
               }
@@ -259,22 +255,26 @@ void TelemetryJet::update() {
                 value.v_float32 = mpack_expect_float(&reader);
                 break;
               }
-              case DataPointType::FLOAT64: {
-                value.v_float64 = mpack_expect_double(&reader);
-                break;
-              }
             }
 
             if (mpack_reader_destroy(&reader) == mpack_ok) {
               // Write packet values as a data point
-              if (key > 0 && key < numDimensions && type < (uint8_t)DataPointType::NUM_TYPES) {
-                dimensions[key]->value = value;
-                dimensions[key]->type = (DataPointType)type;
-                dimensions[key]->hasValue = true;
-                dimensions[key]->hasNewTransmitValue = false;
-                dimensions[key]->hasNewReceivedValue = true;
-                dimensions[key]->lastTimestamp = millis();
+              // Find dimension with key matching from the data
+              if (type < (uint8_t)DataPointType::NUM_TYPES) {
+                for (uint16_t i = 0; i < numDimensions; i++) {
+                  if (dimensions[i]->key = key) {
+                    dimensions[i]->value = value;
+                    dimensions[i]->type = (DataPointType)type;
+                    dimensions[i]->hasValue = true;
+                    dimensions[i]->hasNewTransmitValue = false;
+                    dimensions[i]->hasNewReceivedValue = true;
+                    dimensions[i]->lastTimestamp = millis();
+                    break;
+                  }
+                }
               }
+
+
             } else {
               numDroppedRxPackets++;
             }
@@ -338,10 +338,6 @@ void TelemetryJet::update() {
             }
             case DataPointType::FLOAT32: {
               mpack_write_float(&writer, dimensions[i]->value.v_float32);
-              break;
-            }
-            case DataPointType::FLOAT64: {
-              mpack_write_double(&writer, dimensions[i]->value.v_float64);
               break;
             }
           }
@@ -514,16 +510,6 @@ void Dimension::setFloat32(float value) {
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
-void Dimension::setFloat64(double value) {
-  _parent->dimensions[_id]->value.v_float64 = value;
-  _parent->dimensions[_id]->type = DataPointType::FLOAT64;
-  _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewReceivedValue = false;
-  _parent->dimensions[_id]->hasNewTransmitValue = true;
-  _parent->dimensions[_id]->lastTimestamp = millis();
-}
-
-
 bool Dimension::getBool(bool defaultValue = false) {
   if (!hasValue()) {
     return defaultValue;
@@ -644,18 +630,6 @@ float Dimension::getFloat32(float defaultValue = 0.0) {
   }
 }
 
-double Dimension::getFloat64(double defaultValue = 0.0) {
-  if (!hasValue()) {
-    return defaultValue;
-  }
-
-  if (_parent->dimensions[_id]->type == DataPointType::FLOAT64) {
-    return _parent->dimensions[_id]->value.v_float64;
-  } else {
-    return (double)getFloat32(defaultValue);
-  }
-}
-
 bool Dimension::hasBool(bool exact = false) {
   if (!hasValue()) {
     return false;
@@ -773,18 +747,6 @@ bool Dimension::hasFloat32(bool exact = false) {
   }
   if (!exact) {
     return false;
-  }
-}
-
-bool Dimension::hasFloat64(bool exact = false) {
-  if (!hasValue()) {
-    return false;
-  }
-  if (_parent->dimensions[_id]->type == DataPointType::FLOAT64) {
-    return true;
-  }
-  if (!exact) {
-    return hasFloat32();
   }
 }
 

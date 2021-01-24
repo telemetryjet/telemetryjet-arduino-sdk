@@ -31,7 +31,6 @@ enum class DataPointType : int {
     INT32,
     INT64,
     FLOAT32,
-    FLOAT64,
     NUM_TYPES
 };
 
@@ -50,7 +49,6 @@ union DataPointValue {
   int32_t v_int32;
   int64_t v_int64;
   float v_float32;
-  double v_float64;
 };
 
 /*
@@ -97,7 +95,6 @@ class Dimension {
   void setInt32  (int32_t value);
   void setInt64  (int64_t value);
   void setFloat32(float value);
-  void setFloat64(double value);
   
   // Get a typed value from this dimension
   // If a value is not available, returns the default
@@ -107,7 +104,7 @@ class Dimension {
   // For example:
   // - Stored value: int8 -> getInt16 returns a converted value.
   // - Stored value: uint32 -> getUInt64 returns a converted value.
-  // - Stored value: float64 -> getFloat32 returns DEFAULT (converting DOWN is not supported.)
+  // - Stored value: int32 -> getInt8 returns DEFAULT (converting DOWN is not supported.)
   //
   // Full table (stored type, compatible getters):
   // Boolean family:
@@ -123,8 +120,7 @@ class Dimension {
   // - int32  -> getInt32, getInt64
   // - int64  -> getInt64
   // Floating point family:
-  // - float32 -> getFloat32, getFloat64
-  // - float64 -> getFloat64
+  // - float32 -> getFloat32
   bool     getBool   (bool     defaultValue = false);
   uint8_t  getUInt8  (uint8_t  defaultValue = 0);
   uint16_t getUInt16 (uint16_t defaultValue = 0);
@@ -135,7 +131,6 @@ class Dimension {
   int32_t  getInt32  (int32_t  defaultValue = 0);
   int64_t  getInt64  (int64_t  defaultValue = 0);
   float    getFloat32(float    defaultValue = 0.0);
-  double   getFloat64(double   defaultValue = 0.0);
   
   // Value checks: Return whether a value is present
   // 'exact' parameter determines whether we must have a value of exactly this type,
@@ -152,7 +147,6 @@ class Dimension {
   bool hasInt32  (bool exact = false);
   bool hasInt64  (bool exact = false);
   bool hasFloat32(bool exact = false);
-  bool hasFloat64(bool exact = false);
 
   // Clear a value if it is present
   void clearValue();

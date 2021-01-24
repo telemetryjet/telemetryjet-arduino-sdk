@@ -34,7 +34,7 @@ void loop() {
 
   // If we received a new value on dimension 1, echo it back on dimension 2
   // We can also check to verify the type of the input value
-  if (inputValue.hasNewValue() && inputValue.hasFloat64()) {
-    outputValue.setFloat64(inputValue.getFloat64());
+  if (inputValue.hasNewValue() && inputValue.hasFloat32()) {
+    outputValue.setFloat32(inputValue.getFloat32());
   }  
 }
