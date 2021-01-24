@@ -107,6 +107,7 @@ void TelemetryJet::update() {
       bool wroteValue = false;
       bool hasValue = !isDeltaMode;
       for (uint16_t i = 0; i < numDimensions; i++) {
+        updateHasValue(i);
         if (dimensions[i]->hasNewValue) {
           hasValue = true;
         }
@@ -231,6 +232,7 @@ void TelemetryJet::update() {
       mpack_writer_t writer;
       size_t packetLength;
       for (uint16_t i = 0; i < numDimensions; i++) {
+        updateHasValue(i);
         if (dimensions[i]->hasValue && (dimensions[i]->hasNewValue || !isDeltaMode)) {
           dimensions[i]->hasNewValue = false;
           mpack_writer_init(&writer, tempBuffer, 32);
@@ -735,6 +737,12 @@ bool Dimension::hasValue() {
     return false;
   }
   return true;
+}
+
+void TelemetryJet::updateHasValue(int id) {
+  if (dimensions[_id]->hasTimeout && ((millis() - dimensions[_id]->lastTimestamp) > dimensions[_id]->timeoutInterval)) {
+    dimensions[_id]->hasValue = false;
+  }
 }
 
 int32_t Dimension::getTimeoutAge() {

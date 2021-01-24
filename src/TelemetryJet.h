@@ -190,6 +190,8 @@ private:
   uint32_t numDroppedRxPackets;
   uint32_t numRxPackets;
   uint32_t numTxPackets;
+
+  void updateHasValue(int id);
 public:
   TelemetryJet(Stream *transport, unsigned long transmitRate);
 
