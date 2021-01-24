@@ -833,5 +833,9 @@ void Dimension::setTimeoutAge(uint32_t timeoutAge = 0) {
 }
 
 bool Dimension::hasNewValue() {
-  return _parent->dimensions[_id]->hasNewTransmitValue || _parent->dimensions[_id]->hasNewReceivedValue;
+  if (_parent->dimensions[_id]->hasNewReceivedValue) {
+    _parent->dimensions[_id]->hasNewReceivedValue = false;
+    return true;
+  }
+  return false;
 }
