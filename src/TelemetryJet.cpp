@@ -22,7 +22,6 @@ TelemetryJet::TelemetryJet(Stream *transport, unsigned long transmitRate)
   dimensions = (DataPoint**) malloc(sizeof(DataPoint*) * dimensionCacheLength);
 }
 
-
 /*
  * StuffData byte stuffs "length" bytes of data
  * at the location pointed to by "ptr", writing
@@ -92,7 +91,6 @@ size_t UnStuffData(const uint8_t *ptr, size_t length, uint8_t *dst) {
 
   return dst - start;
 }
-
 
 void TelemetryJet::update() {
   if (isTextMode) {
@@ -177,47 +175,109 @@ void TelemetryJet::update() {
     }
   } else {
     // Binary mode
-    // Full-featured input and output
     while (transport->available() > 0) {
       uint8_t inByte = transport->read();
-      /*
       if (rxIndex >= 32) {
         rxIndex = 0;
       }
       rxBuffer[rxIndex++] = inByte;
 
       // 0x0 pads the end of a packet
+      // Reset the buffer and parse if possible
       if (inByte == 0x0) {
-        if (rxIndex > 5) {
+        if (rxIndex > 6) {
           // If we see 0x0 and have contents in the buffer, read packet
           // Minimum length of a packet is 5 bytes:
           // - Checksum (1 byte)
           // - Checksum correction byte (1 byte)
+          // - COBS header byte (1 byte)
           // - Key (1+ byte)
           // - Type (1+ byte)
           // - Value (1+ byte)
           // - Packet boundary (0x0, 1 byte)
           
+          uint8_t checksumValue = (uint8_t)rxBuffer[0]
+          uint8_t paddingByteValue = (uint8_t)rxBuffer[1];
+
           // 1 - Validate checksum
           uint8_t checksum = 0;
           for (uint16_t bufferIdx = 0; bufferIdx < rxIndex; bufferIdx++) {
             checksum += (uint8_t)rxBuffer[bufferIdx];
           }
+          // Get padding/flag byte
+
           if (checksum == 0xFF) {
             // Expand COBS encoded binary string
-            size_t packetLength = UnStuffData(rxBuffer, rxIndex, tempBuffer);
+            // Offset the array by the two checksum bytes that are not contained in the cobs encoding
+            size_t packetLength = UnStuffData(rxBuffer + 2, rxIndex - 2, tempBuffer);
 
             // Process messagepack structure
             mpack_reader_t reader;
             mpack_reader_init_data(&reader, tempBuffer, packetLength);
-            mpack_tag_t key = mpack_read_tag(&reader);
-            mpack_tag_t type = mpack_read_tag(&reader);
-            mpack_tag_t value = mpack_read_tag(&reader);
 
-            mpack_read_u8
+            uint16_t key = mpack_expect_u16(&reader);
+            uint8_t type = mpack_expect_u8(&reader);
+            DataPointValue value;
+
+            switch ((DataPointType)type) {
+              case DataPointType::BOOLEAN: {
+                value.v_bool = mpack_expect_bool(&writer);
+                break;
+              }
+              case DataPointType::UINT8: {
+                value.v_uint8 = mpack_expect_u8(&writer);
+                break;
+              }
+              case DataPointType::UINT16: {
+                value.v_uint16 = mpack_expect_u16(&writer);
+                break;
+              }
+              case DataPointType::UINT32: {
+                value.v_uint32 = mpack_expect_u32(&writer);
+                break;
+              }
+              case DataPointType::UINT64: {
+                value.v_uint64 = mpack_expect_u64(&writer);
+                break;
+              }
+              case DataPointType::INT8: {
+                value.v_int8 = mpack_expect_i8(&writer);
+                break;
+              }
+              case DataPointType::INT16: {
+                value.v_int16 = mpack_expect_i16(&writer);
+                break;
+              }
+              case DataPointType::INT32: {
+                value.v_int32 = mpack_expect_i32(&writer);
+                break;
+              }
+              case DataPointType::INT64: {
+                value.v_int64 = mpack_expect_i64(&writer);
+                break;
+              }
+              case DataPointType::FLOAT32: {
+                value.v_float32 = mpack_expect_float(&writer);
+                break;
+              }
+              case DataPointType::FLOAT64: {
+                value.v_float64 = mpack_expect_double(&writer);
+                break;
+              }
+            }
 
             if (mpack_reader_destroy(&reader) == mpack_ok) {
-              // Write packet
+              // Write packet values as a data point
+              if (key > 0 && key < numDimensions && type < DataPointType::NUM_TYPES) {
+                dimensions[_id]->value = value;
+                dimensions[_id]->type = (DataPointType)type;
+                dimensions[_id]->hasValue = true;
+                dimensions[_id]->hasNewTransmitValue = false;
+                dimensions[_id]->hasNewReceivedValue = true;
+                _parent->dimensions[_id]->lastTimestamp = millis();
+              }
+            } else {
+              numDroppedRxPackets++;
             }
           } else {
             numDroppedRxPackets++;
@@ -225,14 +285,13 @@ void TelemetryJet::update() {
         }
         rxIndex = 0;
       }
-      */
     }
     if (millis() - lastSent >= transmitRate && numDimensions > 0) {
       mpack_writer_t writer;
       size_t packetLength;
       for (uint16_t i = 0; i < numDimensions; i++) {
-        if (dimensions[i]->hasValue && (dimensions[i]->hasNewValue || !isDeltaMode)) {
-          dimensions[i]->hasNewValue = false;
+        if (dimensions[i]->hasValue && (dimensions[i]->hasNewTransmitValue || !isDeltaMode)) {
+          dimensions[i]->hasNewTransmitValue = false;
           mpack_writer_init(&writer, tempBuffer, 32);
 
           // Write key and type headers
@@ -351,7 +410,8 @@ Dimension TelemetryJet::createDimension(uint16_t key, uint32_t timeoutAge = 0) {
   dimensions[dimensionId]->type = DataPointType::FLOAT32;
   dimensions[dimensionId]->value.v_float32 = 0.0;
   dimensions[dimensionId]->hasValue = false;
-  dimensions[dimensionId]->hasNewValue = false;
+  dimensions[dimensionId]->hasNewReceivedValue = false;
+  dimensions[dimensionId]->hasNewTransmitValue = false;
   if (timeoutAge > 0) {
     dimensions[dimensionId]->hasTimeout = true;
     dimensions[dimensionId]->timeoutInterval = timeoutAge;
@@ -367,7 +427,8 @@ void Dimension::setBool(bool value) {
   _parent->dimensions[_id]->value.v_bool = value;
   _parent->dimensions[_id]->type = DataPointType::BOOLEAN;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -375,7 +436,8 @@ void Dimension::setUInt8(uint8_t value) {
   _parent->dimensions[_id]->value.v_uint8 = value;
   _parent->dimensions[_id]->type = DataPointType::UINT8;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -383,7 +445,8 @@ void Dimension::setUInt16(uint16_t value) {
   _parent->dimensions[_id]->value.v_uint16 = value;
   _parent->dimensions[_id]->type = DataPointType::UINT16;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -392,7 +455,8 @@ void Dimension::setUInt32(uint32_t value) {
   _parent->dimensions[_id]->value.v_uint32 = value;
   _parent->dimensions[_id]->type = DataPointType::UINT32;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -400,7 +464,8 @@ void Dimension::setUInt64(uint64_t value) {
   _parent->dimensions[_id]->value.v_uint64 = value;
   _parent->dimensions[_id]->type = DataPointType::UINT64;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -408,7 +473,8 @@ void Dimension::setInt8(int8_t value) {
   _parent->dimensions[_id]->value.v_int8 = value;
   _parent->dimensions[_id]->type = DataPointType::INT8;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -416,7 +482,8 @@ void Dimension::setInt16(int16_t value) {
   _parent->dimensions[_id]->value.v_int16 = value;
   _parent->dimensions[_id]->type = DataPointType::INT16;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -424,7 +491,8 @@ void Dimension::setInt32(int32_t value) {
   _parent->dimensions[_id]->value.v_int32 = value;
   _parent->dimensions[_id]->type = DataPointType::INT32;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -432,7 +500,8 @@ void Dimension::setInt64(int64_t value) {
   _parent->dimensions[_id]->value.v_int64 = value;
   _parent->dimensions[_id]->type = DataPointType::INT64;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -440,7 +509,8 @@ void Dimension::setFloat32(float value) {
   _parent->dimensions[_id]->value.v_float32 = value;
   _parent->dimensions[_id]->type = DataPointType::FLOAT32;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 
@@ -448,7 +518,8 @@ void Dimension::setFloat64(double value) {
   _parent->dimensions[_id]->value.v_float64 = value;
   _parent->dimensions[_id]->type = DataPointType::FLOAT64;
   _parent->dimensions[_id]->hasValue = true;
-  _parent->dimensions[_id]->hasNewValue = true;
+  _parent->dimensions[_id]->hasNewReceivedValue = false;
+  _parent->dimensions[_id]->hasNewTransmitValue = true;
   _parent->dimensions[_id]->lastTimestamp = millis();
 }
 

@@ -31,7 +31,8 @@ enum class DataPointType : int {
     INT32,
     INT64,
     FLOAT32,
-    FLOAT64
+    FLOAT64,
+    NUM_TYPES
 };
 
 /*
@@ -62,7 +63,8 @@ struct DataPoint {
   DataPointType type;
   DataPointValue value;
   bool hasValue = false;
-  bool hasNewValue = false;
+  bool hasNewReceivedValue = false;
+  bool hasNewTransmitValue = false;
   bool hasTimeout = false;
   uint32_t timeoutInterval = 0;
   uint32_t lastTimestamp = 0;
