@@ -17,7 +17,6 @@ setInt16	KEYWORD2
 setInt32	KEYWORD2
 setInt64	KEYWORD2
 setFloat32	KEYWORD2
-setFloat64	KEYWORD2
 getBool	KEYWORD2
 getUInt8	KEYWORD2
 getUInt16	KEYWORD2
@@ -28,7 +27,17 @@ getInt16	KEYWORD2
 getInt32	KEYWORD2
 getInt64	KEYWORD2
 getFloat32	KEYWORD2
-getFloat64	KEYWORD2
+hasValue	KEYWORD2
+hasBool	KEYWORD2
+hasUInt8	KEYWORD2
+hasUInt16	KEYWORD2
+hasUInt32	KEYWORD2
+hasUInt64	KEYWORD2
+hasInt8	KEYWORD2
+hasInt16	KEYWORD2
+hasInt32	KEYWORD2
+hasInt64	KEYWORD2
+hasFloat32	KEYWORD2
 clearValue	KEYWORD2
 getType	KEYWORD2
 getTimeoutAge	KEYWORD2
@@ -40,6 +49,7 @@ createDimension	KEYWORD2
 getNumDimensions	KEYWORD2
 setTextMode	KEYWORD2
 setDeltaMode	KEYWORD2
+setBinaryWarningMessage	KEYWORD2
 
 # Instances (KEYWORD2)
 
