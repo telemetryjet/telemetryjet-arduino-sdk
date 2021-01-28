@@ -125,7 +125,8 @@ if (type == DataPointType::BOOLEAN) {
 
 ## Writing Values
 
-To write a value, use one of the typed getters. See the [Value Types](#value-types) section below for a full list of types and their methods.
+To write a value, use one of the typed getters. See the [Value Types](#value-types) section below for a full list of types and their methods.  Writing a value saves it to the local
+cache of values, and sends the value over the serial stream at the next occurance of the update interval.
 ```c++
 // Write an 8-bit integer
 sensorValue1.writeInt8(255);
