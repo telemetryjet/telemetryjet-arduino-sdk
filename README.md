@@ -88,7 +88,7 @@ Once you have created a dimension, you can use methods on the Dimension instance
 
 ## Reading Values
 
-To read a value, use one of the typed getters. See the [Value Types](#ValueTypes) section below for a full list of types and their methods. For example, to retrieve an integer value:
+To read a value, use one of the typed getters. See the [Value Types](#value-types) section below for a full list of types and their methods. For example, to retrieve an integer value:
 ```c++
 // Retrieve a value (Default value is 0 if none exists)
 int32_t value = sensorValue1.getInt32();
@@ -125,7 +125,7 @@ if (type == DataPointType::BOOLEAN) {
 
 ## Writing Values
 
-To write a value, use one of the typed getters. See the [Value Types](#ValueTypes) section below for a full list of types and their methods.
+To write a value, use one of the typed getters. See the [Value Types](#value-types) section below for a full list of types and their methods.
 ```c++
 // Write an 8-bit integer
 sensorValue1.writeInt8(255);
@@ -228,15 +228,12 @@ To read a packet manually in your own program, follow the following steps:
 4. Skip over the first two bytes, for the checksum and padding/flag byte.
 5. Read the MessagePack data:
    - Dimension ID: 16-bit unsigned integer, numerical identifier for the data point
-   - Value Type: 8-bit unsigned integer, numeric identifier for the uncompressed value. Corresponds to an ID from the `DataPointType` enum, detailed in the [Value Types](#ValueTypes) section above.
+   - Value Type: 8-bit unsigned integer, numeric identifier for the uncompressed value. Corresponds to an ID from the `DataPointType` enum, detailed in the [Value Types](#value-types) section above.
    - Value: 1-9 bytes, value of the data point, encoded as a MessagePack-compressed boolean, integer, or float.
 
 This SDK implements an encoder and decoder in C++ in `TelemetryJet::update`, which you can copy and use in your projects.
 
 # Resources & Notes
-### Whitepaper
-For an overview of the motivation and design behind the TelemetryJet Arduino SDK, read our Whitepaper: "A Lightweight Telemetry Protocol for Hardware Sensor Data". (*Coming Soon!*). 
-
 ### Documentation
 Full documentation for the TelemetryJet Arduino SDK is provided on the [TelemetryJet Documentation Site](https://docs.telemetryjet.com/arduino_sdk/).
 
