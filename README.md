@@ -161,18 +161,18 @@ float32_t throttleValue = throttle.getFloat32(0);
 All values stored in a dimension are strongly typed. The SDK provides boolean, integer, and floating point data types. Arbitrary string or binary values are not supported -- These values are not common in sensor measurements,
 and allow the SDK to provide a fixed bound on memory usage that improves reliability.
 
-|Type name|Enum (ID)|Value Range|Size (Bytes)|Methods|
-|---------|-------------|-----------|------------|-------|
-|Boolean|`DataPointType::BOOLEAN` (0)|0 to 1|1 byte|`getBool`, `setBool`, `hasBool`|
-|Unsigned 8-Bit Integer|`DataPointType::UINT8` (1)|0 to 255|1 byte|`getUInt8`, `setUInt8`, `hasUInt8`|
-|Unsigned 16-Bit Integer|`DataPointType::UINT16` (2)|0 to 65,535|1 byte|`getUInt16`, `setUInt16`, `hasUInt16`|
-|Unsigned 32-Bit Integer|`DataPointType::UINT32` (3)|0 to 4,294,967,295|1 byte|`getUInt32`, `setUInt32`, `hasUInt32`|
-|Unsigned 64-bit Integer|`DataPointType::UINT64` (4)|0 to 18,446,744,073,709,551,615|1 byte|`getUInt64`, `setUInt64`, `hasUInt64`|
-|Signed 8-Bit Integer|`DataPointType::INT8` (5)|-128 to 127|1 byte|`getInt8`, `setInt8`, `hasInt8`|
-|Signed 16-Bit Integer|`DataPointType::INT16` (6)|-32,768 to 32,767|2 bytes|`getInt16`, `setInt16`, `hasInt16`|
-|Signed 32-Bit Integer|`DataPointType::INT32` (7)|-2,147,483,648 to 2,147,483,647|4 bytes|`getInt32`, `setInt32`, `hasInt32`|
-|Signed 64-Bit Integer|`DataPointType::INT64` (8)|-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807|8 bytes|`getInt64`, `setInt64`, `hasInt64`|
-|32-Bit Float|`DataPointType::FLOAT32` (9)|N/A|8 bytes|`getFloat32`, `setFloat32`, `hasFloat32`|
+|Type name<br>Range|Enum (ID)|Size (Bytes)|Methods|
+|---------|-------------|------------|-------|
+|Boolean<br>0 to 1|`DataPointType::BOOLEAN` (0)|1 byte|`getBool`, `setBool`, `hasBool`|
+|Unsigned 8-Bit Integer<br>0 to 255|`DataPointType::UINT8` (1)|1 byte|`getUInt8`, `setUInt8`, `hasUInt8`|
+|Unsigned 16-Bit Integer<br>0 to 65,535|`DataPointType::UINT16` (2)|1 byte|`getUInt16`, `setUInt16`, `hasUInt16`|
+|Unsigned 32-Bit Integer<br>0 to 4,294,967,295|`DataPointType::UINT32` (3)|1 byte|`getUInt32`, `setUInt32`, `hasUInt32`|
+|Unsigned 64-bit Integer<br>0 to 18,446,744,073,709,551,615|`DataPointType::UINT64` (4)|1 byte|`getUInt64`, `setUInt64`, `hasUInt64`|
+|Signed 8-Bit Integer<br>-128 to 127|`DataPointType::INT8` (5)|1 byte|`getInt8`, `setInt8`, `hasInt8`|
+|Signed 16-Bit Integer<br>-32,768 to 32,767|`DataPointType::INT16` (6)|2 bytes|`getInt16`, `setInt16`, `hasInt16`|
+|Signed 32-Bit Integer<br>-2,147,483,648 to 2,147,483,647|`DataPointType::INT32` (7)|4 bytes|`getInt32`, `setInt32`, `hasInt32`|
+|Signed 64-Bit Integer<br>-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807|`DataPointType::INT64` (8)|8 bytes|`getInt64`, `setInt64`, `hasInt64`|
+|32-Bit Float<br>N/A|`DataPointType::FLOAT32` (9)|8 bytes|`getFloat32`, `setFloat32`, `hasFloat32`|
 
 ## Value Conversion
 
@@ -216,7 +216,7 @@ The maximum length of a valid packet is 16 bytes.
 You can integrate the Arduino SDK into your software in several ways: By using the TelemetryJet CLI, or by reading packets manually in your own project.
 
 ## No-Code Usage with the TelemetryJet CLI
-The Arduino SDK can easily be connected to other data sources and destinations such as a CSV or SQLite file with the TelemetryJet CLI. The CLI is a powerful command-line tool for defining, monitoring, and controlling embedded telemetry systems with minimal code. See the [TelemetryJet CLI Documentation](https://docs.telemetryjet.com/cli/) for more details.
+The Arduino SDK can easily be connected to other data sources and destinations such as a CSV or SQLite file with the TelemetryJet CLI. The CLI is a powerful command-line tool for defining, monitoring, and controlling embedded telemetry systems with minimal code. See the [TelemetryJet CLI](https://github.com/telemetryjet/telemetryjet-cli) for more details.
 
 The CLI has a builtin implementation of the Arduino SDK (the `telemetryjet-arduino-sdk` data source type), and handles transmitting and receiving data points with the Arduino SDK over a serial connection. 
 
